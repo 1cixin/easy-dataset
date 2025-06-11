@@ -36,11 +36,14 @@ import { ProviderIcon } from '@lobehub/icons';
 import { toast } from 'sonner';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ScienceIcon from '@mui/icons-material/Science';
+import { useRouter } from 'next/navigation';
 import { useAtom } from 'jotai';
 import { modelConfigListAtom, selectedModelInfoAtom } from '@/lib/store';
 
 export default function ModelSettings({ projectId }) {
   const { t } = useTranslation();
+  const router = useRouter();
   // 模型对话框状态
   const [openModelDialog, setOpenModelDialog] = useState(false);
   const [editingModel, setEditingModel] = useState(null);
@@ -165,31 +168,20 @@ export default function ModelSettings({ projectId }) {
       if (!modelConfigForm || !modelConfigForm.endpoint) {
         return null;
       }
-      let url = modelConfigForm.endpoint.replace(/\/$/, ''); // 去除末尾的斜杠
       const providerId = modelConfigForm.providerId;
       console.log(providerId, 'getNewModels providerId');
-      url += providerId === 'ollama' ? '/tags' : '/models';
-      const res = await axios.get(url, {
-        headers: {
-          Authorization: `Bearer ${modelConfigForm.apiKey}`
-        }
+
+      // 使用后端 API 代理请求
+      const res = await axios.post('/api/llm/fetch-models', {
+        endpoint: modelConfigForm.endpoint,
+        providerId: providerId,
+        apiKey: modelConfigForm.apiKey
       });
-      if (providerId === 'ollama') {
-        return res.data.models.map(item => ({
-          modelId: item.model,
-          modelName: item.name,
-          providerId
-        }));
-      } else {
-        return res.data.data.map(item => ({
-          modelId: item.id,
-          modelName: item.id,
-          providerId
-        }));
-      }
+
+      return res.data;
     } catch (err) {
       if (err.response && err.response.status === 401) {
-        toast.error('API Key invalid', { duration: 3000 });
+        toast.error('API Key Invalid', { duration: 3000 });
       } else {
         toast.error('Get Model List Error', { duration: 3000 });
       }
@@ -291,18 +283,29 @@ export default function ModelSettings({ projectId }) {
     <Card>
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h6" fontWeight="bold">
-            {t('models.title')}
-          </Typography>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenModelDialog()}
-            size="small"
-          >
-            {t('models.add')}
-          </Button>
+          <Typography variant="h6" fontWeight="bold"></Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={<ScienceIcon />}
+              onClick={() => router.push(`/projects/${projectId}/playground`)}
+              size="small"
+              sx={{ textTransform: 'none' }}
+            >
+              {t('playground.title')}
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenModelDialog()}
+              size="small"
+              sx={{ textTransform: 'none' }}
+            >
+              {t('models.add')}
+            </Button>
+          </Box>
         </Box>
 
         <Stack spacing={2}>
@@ -368,18 +371,32 @@ export default function ModelSettings({ projectId }) {
                       variant="outlined"
                     />
                   </Tooltip>
-                  <IconButton size="small" onClick={() => handleOpenModelDialog(model)} color="primary">
-                    <EditIcon fontSize="small" />
-                  </IconButton>
+                  <Tooltip title={t('playground.title')}>
+                    <IconButton
+                      size="small"
+                      onClick={() => router.push(`/projects/${projectId}/playground?modelId=${model.id}`)}
+                      color="secondary"
+                    >
+                      <ScienceIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
 
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDeleteModel(model.id)}
-                    disabled={modelConfigList.length <= 1}
-                    color="error"
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
+                  <Tooltip title={t('common.edit')}>
+                    <IconButton size="small" onClick={() => handleOpenModelDialog(model)} color="primary">
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+
+                  <Tooltip title={t('common.delete')}>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteModel(model.id)}
+                      disabled={modelConfigList.length <= 1}
+                      color="error"
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 </Box>
               </Box>
             </Paper>

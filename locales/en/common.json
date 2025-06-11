@@ -1,0 +1,10 @@
+{
+  "question": {
+    "evolve": {
+      "button": "Evolve Question",
+      "loading": "Evolving question...",
+      "success": "Question evolved successfully",
+      "error": "Failed to evolve question"
+    }
+  }
+} 
